@@ -72,14 +72,35 @@ class MinioClient:
             raise
 
     def build_bronze_path(
-        self, source: str, dataset_id: str, country_code: str, execution_date: str
+        self,
+        source: str,
+        dataset_id: str,
+        country_code: str,
+        execution_date: str,
+        in_domain: str | None = None,
+        out_domain: str | None = None,
+        extension: str = "xml",
     ) -> str:
         """
         Constructs a standardized, Hive-style partitioned Bronze path.
-        Example: entsoe/day_ahead_prices/year=2026/month=11/day=06/10Y1001A1001A82H.xml
+        Supports both single-domain and directed-pair datasets.
+
+        Examples:
+            Single: entsoe/day_ahead_prices/year=2023/month=10/day=01/10Y1001A1001A82H.xml
+            Pair:   entsoe/physical_flows/year=2023/month=10/day=01/10Y1001A1001A82H_to_10YFR-RTE------C.xml
         """
         year, month, day = execution_date.split("-")
-        return f"{source}/{dataset_id}/year={year}/month={month}/day={day}/{country_code}.xml"
+
+        if in_domain and out_domain:
+            filename = f"{in_domain}_to_{out_domain}.{extension}"
+        elif country_code:
+            filename = f"{country_code}.{extension}"
+        else:
+            raise ValueError(
+                "[MinioClient] Must provide either country_code or (in_domain, out_domain)"
+            )
+
+        return f"{source}/{dataset_id}/year={year}/month={month}/day={day}/{filename}"
 
     def build_silver_path(
         self, source: str, dataset_id: str, country_code: str, execution_date: str
