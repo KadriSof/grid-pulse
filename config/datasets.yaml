@@ -1,0 +1,274 @@
+entsoe:
+  base_url: "https://web-api.tp.entsoe.eu/api"
+  rate_limit:
+    requests_per_minute: 300
+    retry_attempts: 3
+    backoff_factor: 2.0
+  datasets:
+    # ==========================================
+    # P0: CORE DATASETS
+    # ==========================================
+    day_ahead_prices:
+      id: "entsoe_day_ahead_prices"
+      description: "Day-ahead market clearing prices by bidding zone"
+      priority: "P0"
+      api:
+        entsoe_py_method: "query_day_ahead_prices"
+        document_type: "A44"
+        process_type: "A01"
+        requires_out_domain: true
+        use_base_request: false
+        base_request_params:
+          documentType: "A44"
+          processType: "A01"
+      geography:
+        level: "bidding_zone"
+        sample_eic_codes:
+          - "10Y1001A1001A82H" # Germany (DE-LU)
+          - "10YFR-RTE------C" # France
+          - "10YIT-GRTN-----B" # Italy
+      temporal:
+        default_resolution: "PT15M"
+      silver_contract:
+        primary_keys:
+          - "country_code"
+          - "time_interval_start"
+          - "time_interval_end"
+        fill_missing_positions: false
+        validation_rules:
+          - field: "price"
+            condition: "is_numeric"
+
+    actual_load:
+      id: "entsoe_actual_load"
+      description: "Realised total electricity demand"
+      priority: "P0"
+      api:
+        entsoe_py_method: "query_load"
+        document_type: "A65"
+        process_type: "A16"
+        requires_out_domain: false
+        use_base_request: false
+        base_request_params:
+          documentType: "A65"
+          processType: "A16"
+      geography:
+        level: "control_area"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+          - "10YFR-RTE------C"
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "country_code"
+          - "time_interval_start"
+          - "time_interval_end"
+        fill_missing_positions: true
+        fill_value: 0
+        validation_rules:
+          - field: "load"
+            condition: ">= 0"
+
+    load_forecast:
+      id: "entsoe_load_forecast"
+      description: "Day-ahead total load forecast"
+      priority: "P0"
+      api:
+        entsoe_py_method: "query_load_forecast"
+        document_type: "A65"
+        process_type: "A01"
+        requires_out_domain: false
+        use_base_request: false
+        base_request_params:
+          documentType: "A65"
+          processType: "A01"
+      geography:
+        level: "control_area"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+          - "10YFR-RTE------C"
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "country_code"
+          - "time_interval_start"
+          - "time_interval_end"
+          - "publication_time"
+        fill_missing_positions: true
+        fill_value: 0
+        validation_rules:
+          - field: "load"
+            condition: ">= 0"
+
+    actual_generation:
+      id: "entsoe_actual_generation"
+      description: "Actual generation by production type (PSR)"
+      priority: "P0"
+      api:
+        entsoe_py_method: "query_generation"
+        document_type: "A75"
+        process_type: "A16"
+        requires_out_domain: false
+        psr_type_options: null
+        use_base_request: false
+        base_request_params:
+          documentType: "A75"
+          processType: "A16"
+      geography:
+        level: "control_area"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+          - "10YFR-RTE------C"
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "country_code"
+          - "psr_type"
+          - "time_interval_start"
+          - "time_interval_end"
+        fill_missing_positions: true
+        fill_value: 0
+        validation_rules:
+          - field: "generation"
+            condition: ">= 0"
+
+    renewable_forecast:
+      id: "entsoe_renewable_forecast"
+      description: "Day-ahead wind and solar generation forecasts"
+      priority: "P0"
+      api:
+        entsoe_py_method: "query_wind_and_solar_forecast"
+        document_type: "A69"
+        process_type: "A01"
+        requires_out_domain: false
+        psr_type_options: ["B16", "B19"]
+        use_base_request: false
+        base_request_params:
+          documentType: "A69"
+          processType: "A01"
+      geography:
+        level: "control_area"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+          - "10YFR-RTE------C"
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "country_code"
+          - "psr_type"
+          - "time_interval_start"
+          - "time_interval_end"
+          - "publication_time"
+        fill_missing_positions: true
+        fill_value: 0
+        validation_rules:
+          - field: "generation"
+            condition: ">= 0"
+
+    # ==========================================
+    # P1: EXTENDED DATASETS (Market Coupling)
+    # ==========================================
+    physical_cross_border_flows:
+      id: "entsoe_physical_flows"
+      description: "Actual physical electricity flows across borders"
+      priority: "P1"
+      api:
+        entsoe_py_method: "query_crossborder_flows"
+        document_type: "A11"
+        process_type: "A16"
+        requires_out_domain: true
+        use_base_request: false
+        base_request_params:
+          documentType: "A11"
+          processType: "A16"
+      geography:
+        level: "directed_border_pair"
+        sample_pairs:
+          - ["10Y1001A1001A82H", "10YFR-RTE------C"] # DE-LU to FR
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "in_domain"
+          - "out_domain"
+          - "time_interval_start"
+          - "time_interval_end"
+        fill_missing_positions: true
+        fill_value: 0
+
+    scheduled_commercial_exchanges:
+      id: "entsoe_scheduled_exchanges"
+      description: "Commercially scheduled exchanges"
+      priority: "P1"
+      api:
+        entsoe_py_method: "query_scheduled_exchanges"
+        document_type: "A09"
+        process_type: "A16"
+        requires_out_domain: true
+        use_base_request: false
+        base_request_params:
+          documentType: "A09"
+          processType: "A16"
+      geography:
+        level: "directed_border_pair"
+        sample_pairs:
+          - ["10Y1001A1001A82H", "10YFR-RTE------C"]
+      temporal:
+        default_resolution: "PT60M"
+      silver_contract:
+        primary_keys:
+          - "in_domain"
+          - "out_domain"
+          - "time_interval_start"
+          - "time_interval_end"
+
+    # ==========================================
+    # P2: EXTENDED DATASETS (Balancing & Outages)
+    # ==========================================
+    imbalance_prices:
+      id: "entsoe_imbalance_prices"
+      description: "Balancing-market prices"
+      priority: "P2"
+      api:
+        entsoe_py_method: "query_imbalance_prices"
+        document_type: "A83"
+        process_type: "A16"
+        requires_out_domain: false
+        use_base_request: false
+        base_request_params:
+          documentType: "A83"
+          processType: "A16"
+      geography:
+        level: "bidding_zone"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+      temporal:
+        default_resolution: "PT15M"
+
+    generation_outages:
+      id: "entsoe_generation_outages"
+      description: "Generation unavailability / outage events"
+      priority: "P2"
+      api:
+        entsoe_py_method: "query_unavailability_of_generation_units"
+        document_type: "A77"
+        process_type: "A26"
+        requires_out_domain: false
+        use_base_request: false
+        base_request_params:
+          documentType: "A77"
+          processType: "A26"
+      geography:
+        level: "control_area"
+        sample_eic_codes:
+          - "10Y1001A1001A82H"
+      temporal:
+        default_resolution: "Event-based"
+      silver_contract:
+        primary_keys:
+          - "document_mrid"
+          - "revision_number"

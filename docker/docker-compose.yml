@@ -1,0 +1,186 @@
+# ==============================================================================
+# GridPulse Local Development Stack (Airflow 3.x Compatible)
+# ==============================================================================
+x-airflow-common: &airflow-common
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  environment: &airflow-common-env # Airflow Core Settings
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: UTC
+
+    # Airflow 3.x: Execution API endpoint
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-webserver:8080/execution/"
+
+    # CRITICAL FOR AIRFLOW 3.x: Use FAB Auth Manager for traditional username/password login
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?AIRFLOW_JWT_SECRET must be set}
+
+    # Database Connection
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+
+    # Logging
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+
+    # GridPulse Environment Variables (loaded from .env)
+    GRIDPULSE_ENTSOE_API_KEY: ${GRIDPULSE_ENTSOE_API_KEY}
+    GRIDPULSE_MINIO_ENDPOINT: http://minio:8333
+    GRIDPULSE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+    GRIDPULSE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+    # MinIO Client Configuration
+    MINIO_ENDPOINT: minio:8333
+    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+  volumes:
+    # Mount project directories for hot-reloading during development
+    - ../dags:/opt/airflow/dags
+    - ../src:/opt/airflow/src
+    - ../config:/opt/airflow/config
+    - ../logs:/opt/airflow/logs
+    - ../data:/opt/airflow/data
+  env_file:
+    - ../.env
+  depends_on: &airflow-common-depends-on
+    postgres:
+      condition: service_healthy
+
+services:
+  # ============================================================================
+  # PostgreSQL - Airflow Metadata Database
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: gridpulse-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  # ============================================================================
+  # SeaweedFS - S3-Compatible Object Storage (Drop-in MinIO Replacement)
+  # ============================================================================
+  minio:
+    image: chrislusf/seaweedfs:latest
+    container_name: gridpulse-seaweedfs
+    command: "server -s3 -dir=/data -volume.max=0"
+    environment:
+      - SEAWEEDFS_S3_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - SEAWEEDFS_S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:8333" # S3 API
+      - "9001:9333" # Web UI
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8333/"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+    restart: always
+
+  # ============================================================================
+  # Airflow Initialization (One-time setup)
+  # ============================================================================
+  airflow-init:
+    <<: *airflow-common
+    container_name: gridpulse-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        echo "Running Airflow database migrations..."
+        airflow db migrate
+
+        echo "Creating initial admin user..."
+        airflow users create \
+          --username "$${AIRFLOW_WWW_USER_USERNAME:-airflow}" \
+          --password "$${AIRFLOW_WWW_USER_PASSWORD:-airflow}" \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email "$${AIRFLOW_WWW_USER_EMAIL:-admin@gridpulse.local}" || echo "User might already exist."
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
+      AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      AIRFLOW_WWW_USER_EMAIL: ${AIRFLOW_WWW_USER_EMAIL:-admin@gridpulse.local}
+    restart: "no"
+
+  # ============================================================================
+  # Airflow API Server (formerly Webserver in Airflow 3.x)
+  # ============================================================================
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: gridpulse-airflow-webserver
+    command: api-server # <-- CHANGED FROM 'webserver'
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ============================================================================
+  # Airflow Scheduler
+  # ============================================================================
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: gridpulse-airflow-scheduler
+    command: scheduler
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ============================================================================
+  # Airflow Dag Processor (NEW: Required in Airflow 3.x to parse DAG files)
+  # ============================================================================
+  airflow-dag-processor:
+    <<: *airflow-common
+    container_name: gridpulse-airflow-dag-processor
+    command: dag-processor
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ============================================================================
+  # Airflow Triggerer (Required for Airflow 2.2+ / 3.x)
+  # ============================================================================
+  airflow-triggerer:
+    <<: *airflow-common
+    container_name: gridpulse-airflow-triggerer
+    command: triggerer
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  minio-data:

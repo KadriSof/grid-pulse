@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual Environments
+.venv
+venv/
+ENV/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Airflow Runtime Data
+logs/
+data/
+*.log
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Docker (if using docker-compose volumes)
+docker/data/
+docker/logs/
