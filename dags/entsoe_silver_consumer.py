@@ -1,5 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import UTC, date, datetime, time, timedelta
+from functools import reduce
+from operator import or_
 
 import pandas as pd
 import pendulum
@@ -11,16 +13,26 @@ from gridpulse.storage.minio_client import MinioClient
 
 logger = logging.getLogger(__name__)
 
-ASSETS_P0 = {
+ASSETS = {
+    # P0: Core market fundamentals
     "day_ahead_prices": Asset("entsoe://bronze/day_ahead_prices"),
     "actual_load": Asset("entsoe://bronze/actual_load"),
     "load_forecast": Asset("entsoe://bronze/load_forecast"),
     "actual_generation": Asset("entsoe://bronze/actual_generation"),
     "renewable_forecast": Asset("entsoe://bronze/renewable_forecast"),
+    # P1: Market coupling & cross-border
+    "physical_cross_border_flows": Asset("entsoe://bronze/physical_cross_border_flows"),
+    "scheduled_commercial_exchanges": Asset(
+        "entsoe://bronze/scheduled_commercial_exchanges"
+    ),
+    # P2: Balancing & outages
+    "imbalance_prices": Asset("entsoe://bronze/imbalance_prices"),
+    "generation_outages": Asset("entsoe://bronze/generation_outages"),
 }
 
 
-SCHEDULE_ASSETS = list(ASSETS_P0.values())
+# This allows an updateto any one of the assets to trigger the consumer
+SCHEDULE_ASSETS = reduce(or_, ASSETS.values())
 
 default_args = {
     "owner": "gridpulse",
@@ -34,10 +46,10 @@ with DAG(
     dag_id="entsoe_silver_consumer",
     default_args=default_args,
     description="Transforms raw ENTSO-E Bronze data into structured Silver Parquet",
-    start_date=pendulum.datetime(year=2023, month=11, day=6, tz="UTC"),
+    start_date=pendulum.datetime(year=2026, month=11, day=6, tz="UTC"),
     schedule=SCHEDULE_ASSETS,
     catchup=False,
-    tags={"entsoe", "silver", "transformation"},
+    tags=["entsoe", "silver", "transformation"],
     max_active_runs=5,
 ) as dag:
 
@@ -52,7 +64,7 @@ with DAG(
 
         if not triggering_asset_events:
             raise ValueError(
-                "No triggering asset events found. This task must be triggered by an Asset."
+                "[EntsoeSilverConsumer] No triggering asset events found. This task must be triggered by an Asset."
             )
 
         service = EntsoeService()
@@ -66,50 +78,71 @@ with DAG(
                 extra = event.extra
                 dataset_id = extra.get("dataset_id")
                 country_code = extra.get("country_code")
+                in_domain = extra.get("in_domain")
+                out_domain = extra.get("out_domain")
                 ds = extra.get("date")
 
-                if not all([dataset_id, country_code, ds]):
+                if not dataset_id or not ds:
                     logger.warning(
                         f"[EntsoeSilverConsumer] Skipping event with incomplete metadata: {extra}"
                     )
                     continue
 
+                target_country = (
+                    in_domain if (in_domain and out_domain) else country_code
+                )
+                geo_label = (
+                    f"{in_domain} -> {out_domain}"
+                    if (in_domain and out_domain)
+                    else str(country_code)
+                )
+
                 try:
                     # 3. Fetch structured Dataframe using the SDK parser
-                    start = pd.Timestamp(f"{ds} 00:00:00", tz="UTC")
-                    end = start + pd.Timedelta(days=1)
+                    execution_date = date.fromisoformat(ds)
+                    start = datetime.combine(execution_date, time.min, tzinfo=UTC)
+                    end = start + timedelta(days=1)
 
                     df = service.fetch_silver_dataframe(
                         dataset_id=dataset_id,
-                        country_code=country_code,
+                        country_code=target_country,
                         start=start,
                         end=end,
+                        out_domain=out_domain,
                     )
 
                     # 4. Data Quality & Standardization for Silver Layer
                     if df.empty:
                         logger.warning(
-                            f"[EntsoeSilverConsumer] Empty Dataframe for {dataset_id} / {country_code} on {ds}"
+                            f"[EntsoeSilverConsumer] Empty Dataframe for {dataset_id} / {geo_label} on {ds}"
                         )
                         continue
 
                     df = df.reset_index()
-                    df.rename(columns={"index": "datetime"}, inplace=True)
+                    if "index" in df.columns:
+                        df.rename(columns={"index": "datetime"}, inplace=True)
+                    elif "level_0" in df.columns:
+                        df.rename(columns={"level_0": "datetime"}, inplace=True)
 
                     # Add pipeline metadata columns for lineage and auditing
-                    # (because I'am a professional DE B) )
                     df["dataset_id"] = dataset_id
                     df["country_code"] = country_code
-                    df["ingestion_timestamp"] = datetime.now().isoformat()
+                    df["in_domain"] = in_domain
+                    df["out_domain"] = out_domain
+                    df["ingestion_timestamp"] = datetime.now(tz=UTC).isoformat()
 
+                    # Ensure datetime column is timezone-aware UTC
                     df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
 
                     # 5. Save to MinIO Silver Layer as Parquet
                     object_path = storage.build_silver_path(
                         source="entsoe",
                         dataset_id=dataset_id,
-                        country_code=country_code,
                         execution_date=ds,
+                        country_code=country_code,
+                        in_domain=in_domain,
+                        out_domain=out_domain,
+                        extension="parquet",
                     )
 
                     parquet_buffer = df.to_parquet(index=False, engine="pyarrow")
@@ -129,6 +162,7 @@ with DAG(
                     logger.error(
                         f"[EntsoeSilverConsumer] Failed to process {dataset_id} / {country_code}:\n----{e}\n----"
                     )
+                    raise
 
         if not output_paths:
             logger.warning(
