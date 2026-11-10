@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 
 import pendulum
 from airflow import DAG
-from airflow.exceptions import AirflowSkipException
 from airflow.sdk import Asset, CronDataIntervalTimetable, task
+from airflow.sdk.exceptions import AirflowSkipException
 from entsoe.exceptions import NoMatchingDataError
 
 from gridpulse.config import entsoe_config
@@ -69,7 +69,7 @@ with DAG(
                 for pair in geography.sample_pairs:
                     if len(pair) != 2:
                         logger.warning(
-                            f"[Params] Invalid pair for {dataset_id}: {pair}"
+                            f"[EntsoeBronzeProducer] Invalid pair for {dataset_id}: {pair}"
                         )
                         continue
                     in_domain, out_domain = pair
@@ -100,13 +100,15 @@ with DAG(
                     )
             else:
                 logger.warning(
-                    f"[Params] No geography configured for {dataset_id}, skipping"
+                    f"[EntsoeBronzeProducer] No geography configured for {dataset_id}, skipping"
                 )
 
-        logger.info(f"[Params] Generated {len(params)} extraction tasks for {ds}")
+        logger.info(
+            f"[EntsoeBronzeProducer] Generated {len(params)} extraction tasks for {ds}"
+        )
         return params
 
-    @task
+    @task(outlets=list(ASSETS.values()))
     def fetch_and_store_bronze(
         dataset_id: str,
         start: str,
@@ -115,10 +117,13 @@ with DAG(
         country_code: str,
         in_domain: str | None = None,
         out_domain: str | None = None,
-    ) -> Asset:
+        *,
+        outlet_events: dict,
+    ) -> str:
         """Dynamic task: fetches raw data and stores it in MinIO."""
         service = EntsoeService()
         storage = MinioClient()
+        target_asset = ASSETS[dataset_id]
 
         geo_label = (
             f"{in_domain} -> {out_domain}"
@@ -129,7 +134,8 @@ with DAG(
 
         try:
             logger.info(
-                f"[BronzeProducer] Fetching {dataset_id} for {geo_label} ({ds})"
+                f"[EntsoeBronzeProducer] Fetching {dataset_id} | geography:{geo_label} "
+                f"| start:{start} | end: {end} | ds: {ds}"
             )
 
             # 1. Fetch raw data using the service
@@ -168,38 +174,37 @@ with DAG(
             )
 
             logger.info(
-                f"[BronzeProducer] Stored data at: {object_path} ({len(data_to_upload)} bytes)"
+                f"[EntsoeBronzeProducer] Stored data at: {object_path} ({len(data_to_upload)} bytes)"
             )
 
-            # 4. Emit Asset
-            return Asset(
-                f"entsoe://bronze/{dataset_id}",
-                extra={
-                    "dataset_id": dataset_id,
-                    "country_code": country_code,
-                    "in_domain": in_domain,
-                    "out_domain": out_domain,
-                    "date": ds,
-                    "object_path": object_path,
-                    "content_type": content_type,
-                },
-            )
+            # 4. Emit the asset event with JSON-serializable metadata
+            outlet_events[target_asset].extra = {
+                "dataset_id": dataset_id,
+                "country_code": country_code,
+                "in_domain": in_domain,
+                "out_domain": out_domain,
+                "date": ds,
+                "object_path": object_path,
+                "content_type": content_type,
+            }
+
+            return object_path
 
         except NoMatchingDataError:
             logger.warning(
-                f"[BronzeProducer] Skipped (No Data): {dataset_id} / {geo_label} on {ds}"
+                f"[EntsoeBronzeProducer] Skipped (No Data): {dataset_id} / {geo_label} on {ds}"
             )
             raise AirflowSkipException(
-                f"No data available for {geo_label} in this period."
+                f"[EntsoeBronzeProducer] No data available for {geo_label} in this period."
             )
         except EntsoeServiceError as e:
             logger.error(
-                f"[BronzeProducer] Service Error: {dataset_id} / {geo_label} - {e}"
+                f"[EntsoeBronzeProducer] Service Error: {dataset_id} / {geo_label} - {e}"
             )
             raise
         except Exception as e:
             logger.error(
-                f"[BronzeProducer] Unexpected Error: {dataset_id} / {geo_label} - {e}"
+                f"[EntsoeBronzeProducer] Unexpected Error: {dataset_id} / {geo_label} - {e}"
             )
             raise
 
