@@ -23,10 +23,15 @@ entsoe:
           processType: "A01"
       geography:
         level: "bidding_zone"
-        sample_eic_codes:
-          - "10Y1001A1001A82H" # Germany (DE-LU)
-          - "10YFR-RTE------C" # France
-          - "10YIT-GRTN-----B" # Italy
+      sample_eic_codes:
+        - "10Y1001A1001A82H" # DE-LU
+        - "10YFR-RTE------C" # France
+        - "10Y1001A1001A73I" # Italy IT1
+        - "10Y1001A1001A70O" # Italy IT2
+        - "10Y1001A1001A71M" # Italy IT3
+        - "10Y1001A1001A788" # Italy IT4
+        - "10Y1001A1001A74G" # Italy IT5
+        - "10Y1001A1001A75E" # Italy IT6
       temporal:
         default_resolution: "PT15M"
       silver_contract:
@@ -235,7 +240,7 @@ entsoe:
       priority: "P2"
       api:
         entsoe_py_method: "query_imbalance_prices"
-        document_type: "A83"
+        document_type: "A85"
         process_type: "A16"
         requires_out_domain: false
         use_base_request: false
@@ -243,7 +248,7 @@ entsoe:
           documentType: "A83"
           processType: "A16"
       geography:
-        level: "bidding_zone"
+        level: "control_area"
         sample_eic_codes:
           - "10Y1001A1001A82H"
       temporal:
