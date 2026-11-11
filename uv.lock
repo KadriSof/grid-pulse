@@ -1294,6 +1294,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
+    { name = "sqlalchemy" },
     { name = "tenacity" },
 ]
 
@@ -1318,6 +1319,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.6.0" },
     { name = "pydantic-settings", specifier = ">=2.2.0" },
     { name = "pyyaml", specifier = ">=6.0.1" },
+    { name = "sqlalchemy", specifier = ">=2.1.6" },
     { name = "tenacity", specifier = ">=8.2.3" },
 ]
 
