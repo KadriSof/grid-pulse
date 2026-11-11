@@ -23,7 +23,7 @@ def main():
     try:
         # 1. Test Bronze (Raw Data: XML or ZIP)
         print("\n--- Testing Bronze (Raw Data) ---")
-        raw_data = service.fetch_bronze_data(
+        raw_data = service.fetch_raw_data(
             dataset_id=dataset_id, country_code=country_code, start=start, end=end
         )
 
@@ -40,7 +40,7 @@ def main():
 
         # 2. Test Silver (Pandas DataFrame)
         print("\n--- Testing Silver (Pandas DataFrame) ---")
-        df = service.fetch_silver_dataframe(
+        df = service.fetch_structured_data(
             dataset_id=dataset_id, country_code=country_code, start=start, end=end
         )
         print("SUCCESS: DataFrame fetched")
