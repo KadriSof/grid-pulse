@@ -210,7 +210,7 @@ class EntsoeService:
 
         return response.text
 
-    def fetch_bronze_data(
+    def fetch_raw_data(
         self,
         dataset_id: str,
         country_code: str,
@@ -274,7 +274,7 @@ class EntsoeService:
                 out_domain=out_domain,
             )
 
-    def fetch_silver_dataframe(
+    def fetch_structured_data(
         self,
         dataset_id: str,
         country_code: str,
