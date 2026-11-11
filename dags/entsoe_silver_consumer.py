@@ -103,7 +103,7 @@ with DAG(
                     start = datetime.combine(execution_date, time.min, tzinfo=UTC)
                     end = start + timedelta(days=1)
 
-                    df = service.fetch_silver_dataframe(
+                    df = service.fetch_structured_data(
                         dataset_id=dataset_id,
                         country_code=target_country,
                         start=start,
@@ -135,7 +135,8 @@ with DAG(
                     df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
 
                     # 5. Save to MinIO Silver Layer as Parquet
-                    object_path = storage.build_silver_path(
+                    object_path = storage.build_path(
+                        layer="silver",
                         source="entsoe",
                         dataset_id=dataset_id,
                         execution_date=ds,
