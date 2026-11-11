@@ -139,7 +139,7 @@ with DAG(
             )
 
             # 1. Fetch raw data using the service
-            raw_data = service.fetch_bronze_data(
+            raw_data = service.fetch_raw_data(
                 dataset_id=dataset_id,
                 country_code=target_country,
                 start=start,
@@ -157,7 +157,8 @@ with DAG(
                 data_to_upload = raw_data.encode("utf-8")
 
             # 3. Build path and upload
-            object_path = storage.build_bronze_path(
+            object_path = storage.build_path(
+                layer="bronze",
                 source="entsoe",
                 dataset_id=dataset_id,
                 execution_date=ds,
@@ -171,6 +172,7 @@ with DAG(
                 object_name=object_path,
                 data=data_to_upload,
                 content_type=content_type,
+                layer="bronze",
             )
 
             logger.info(
