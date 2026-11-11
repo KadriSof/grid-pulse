@@ -181,6 +181,28 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # ============================================================================
+  # Application PostgreSQL (Business Data)
+  # ============================================================================
+  app-postgres:
+    image: postgres:16-alpine
+    container_name: gridpulse-app-postgres
+    environment:
+      POSTGRES_USER: ${PG_USER:-gridpulse}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-gridpulse}
+      POSTGRES_DB: ${PG_DATABASE:-gridpulse}
+    volumes:
+      - app-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # Exposed on 5433 to avoid local port conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gridpulse"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
 volumes:
   postgres-data:
   minio-data:
+  app-postgres-data:
