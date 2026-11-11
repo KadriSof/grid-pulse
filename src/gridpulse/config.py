@@ -71,7 +71,7 @@ class GridPulseSettings(BaseSettings):
 
     entsoe_api_key: str | None = None
     config_path: str = "config/datasets.yaml"
-    minio_endpoint: str = "http://localhost:9000"
+    minio_endpoint: str = "minio:8333"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
 
