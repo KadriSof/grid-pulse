@@ -109,7 +109,7 @@ with DAG(
         return params
 
     @task(outlets=list(ASSETS.values()))
-    def fetch_and_store_bronze(
+    def fetch_and_store_raw_data(
         dataset_id: str,
         start: str,
         end: str,
@@ -210,6 +210,80 @@ with DAG(
             )
             raise
 
+    @task(task_id="fetch_and_persist_structured")
+    def fetch_and_persist_structured_data(
+        dataset_id: str,
+        start: str,
+        end: str,
+        ds: str,
+        country_code: str,
+        in_domain: str | None = None,
+        out_domain: str | None = None,
+    ) -> int:
+        from gridpulse.ingestion.data_standardizer import DataStandardizer
+        from gridpulse.ingestion.persistence_service import PersistenceService
+        from gridpulse.models.db_models import DATASET_MODEL_MAP
+
+        # Only persist datasets that have a structured Postgres model.
+        # (P2 event-based datasets (outages, imbalance) remain Bronze-only for now)
+        if dataset_id not in DATASET_MODEL_MAP:
+            logger.info(
+                f"[EntsoeBronzeProducer] No structured model for {dataset_id}; "
+                "data is stored in Bronze (MinIO) only. Skipping Postgres step."
+            )
+            raise AirflowSkipException(
+                f"No structured persistence model for {dataset_id}"
+            )
+
+        service = EntsoeService()
+        persistence = PersistenceService()
+
+        target_country = in_domain if (in_domain and out_domain) else country_code
+        geo_label = (
+            f"{in_domain} -> {out_domain}"
+            if (in_domain and out_domain)
+            else str(country_code)
+        )
+
+        try:
+            # 1. Fetch structured DataFrame from API
+            raw_df = service.fetch_structured_data(
+                dataset_id=dataset_id,
+                country_code=target_country,
+                start=start,
+                end=end,
+                out_domain=out_domain,
+            )
+
+            # 2. Standardize to match Postgres Schema
+            std_df = DataStandardizer.standardize(
+                raw_data=raw_df,
+                dataset_id=dataset_id,
+                country_code=target_country,
+                in_domain=in_domain,
+                out_domain=out_domain,
+            )
+
+            if std_df.empty:
+                logger.warning(
+                    f"[EntsoeBronzeProducer] Standardized DF is empty for {dataset_id}/{geo_label}"
+                )
+                return 0
+
+            # 3. Upsert to Postgres
+            rows = persistence.upsert_dataframe(std_df, dataset_id)
+            logger.info(
+                f"[EntsoeBronzeProducer] Persisted {rows} rows to Postgres for {dataset_id}/{geo_label}"
+            )
+            return rows
+
+        except NoMatchingDataError:
+            raise AirflowSkipException(f"No structured data for {country_code}")
+        except Exception as e:
+            logger.error(f"Postgres Persistence Error: {e}")
+            raise
+
     # Orchestration
     params = get_extraction_params()
-    fetch_and_store_bronze.expand_kwargs(params)
+    fetch_and_store_raw_data.expand_kwargs(params)
+    fetch_and_persist_structured_data.expand_kwargs(params)
