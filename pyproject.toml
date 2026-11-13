@@ -21,7 +21,7 @@ dependencies = [
   "entsoe-py>=0.8.1",
   "minio>=7.2.20",
   "pyarrow>=23.0.1",
-  "sqlalchemy>=2.1.6",
+  "sqlalchemy>=2.0.48",
 ]
 
 [dependency-groups]
