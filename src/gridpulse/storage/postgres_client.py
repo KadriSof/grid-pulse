@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import sessionmaker
 
 from gridpulse.config import settings
@@ -10,23 +10,25 @@ logger = logging.getLogger(__name__)
 
 
 class PostgresClient:
-    """Client for PostgreSQL storage"""
+    """Production-grade client for PostgreSQL storage."""
 
-    def __init__(self) -> None:
-        self.connection_string = (
-            f"postgresql+psycopg2://{settings.pg_user}:{settings.pg_password}"
-            f"@{settings.pg_host}:{settings.pg_host}/{settings.pg_database}"
+    def __init__(self):
+        connection_url = URL.create(
+            drivername="postgresql+psycopg2",
+            username=settings.pg_user,
+            password=settings.pg_password,
+            host=str(settings.pg_host),
+            port=int(settings.pg_port),
+            database=settings.pg_database,
         )
 
         self.engine: Engine = create_engine(
-            self.connection_string,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,  # replace stale connections before use
+            connection_url, pool_size=5, max_overflow=10, pool_pre_ping=True
         )
         self.SessionLocal = sessionmaker(
             autocommit=False, autoflush=False, bind=self.engine
         )
+
         logger.info(f"[PostgresClient] Initialized engine for {settings.pg_database}")
 
     def get_session(self):
