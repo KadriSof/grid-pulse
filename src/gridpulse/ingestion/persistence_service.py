@@ -74,8 +74,9 @@ class PersistenceService:
                 chunksize=1000,
             )
 
+            actual_rows = len(df)
             logger.info(
-                f"[PersistenceService] Upserted {rows_inserted} rows into {table_name}"
+                f"[PersistenceService] Upserted {actual_rows} rows into {table_name}"
             )
             return rows_inserted or 0
 
