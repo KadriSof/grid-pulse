@@ -22,6 +22,8 @@ dependencies = [
   "minio>=7.2.20",
   "pyarrow>=23.0.1",
   "sqlalchemy>=2.0.48",
+  "dbt-core>=1.12.7",
+  "dbt-postgres>=1.11.0",
 ]
 
 [dependency-groups]
