@@ -35,6 +35,12 @@ x-airflow-common: &airflow-common
     MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
     MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
 
+    GRIDPULSE_PG_HOST: app-postgres
+    GRIDPULSE_PG_PORT: 5432
+    GRIDPULSE_PG_USER: ${GRIDPULSE_PG_USER:-gridpulse}
+    GRIDPULSE_PG_PASSWORD: ${GRIDPULSE_PG_PASSWORD:-gridpulse}
+    GRIDPULSE_PG_DATABASE: ${GRIDPULSE_PG_DATABASE:-gridpulse}
+
   volumes:
     # Mount project directories for hot-reloading during development
     - ../dags:/opt/airflow/dags
@@ -46,6 +52,8 @@ x-airflow-common: &airflow-common
     - ../.env
   depends_on: &airflow-common-depends-on
     postgres:
+      condition: service_healthy
+    app-postgres:
       condition: service_healthy
 
 services:
@@ -181,6 +189,28 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # ============================================================================
+  # Application PostgreSQL (Business Data)
+  # ============================================================================
+  app-postgres:
+    image: postgres:16-alpine
+    container_name: gridpulse-app-postgres
+    environment:
+      POSTGRES_USER: ${GRIDPULSE_PG_USER:-gridpulse}
+      POSTGRES_PASSWORD: ${GRIDPULSE_PG_PASSWORD:-gridpulse}
+      POSTGRES_DB: ${GRIDPULSE_PG_DATABASE:-gridpulse}
+    volumes:
+      - app-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # Exposed on 5433 to avoid local port conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GRIDPULSE_PG_USER:-gridpulse}"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
 volumes:
   postgres-data:
   minio-data:
+  app-postgres-data:

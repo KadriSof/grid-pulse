@@ -74,6 +74,11 @@ class GridPulseSettings(BaseSettings):
     minio_endpoint: str = "minio:8333"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
+    pg_host: str = "localhost"
+    pg_port: int = 5433
+    pg_user: str = "gridpulse"
+    pg_password: str = "gridpulse"
+    pg_database: str = "gridpulse"
 
     def load_entsoe_config(self) -> EntsoeConfig:
         path = Path(self.config_path)

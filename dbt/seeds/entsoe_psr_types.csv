@@ -1,0 +1,29 @@
+fuel_type_name,psr_code
+Mixed,A03
+Generation,A04
+Load,A05
+Biomass,B01
+Fossil Brown coal/Lignite,B02
+Fossil Coal-derived gas,B03
+Fossil Gas,B04
+Fossil Hard coal,B05
+Fossil Oil,B06
+Fossil Oil shale,B07
+Fossil Peat,B08
+Geothermal,B09
+Hydro Pumped Storage,B10
+Hydro Run-of-river and pondage,B11
+Hydro Water Reservoir,B12
+Marine,B13
+Nuclear,B14
+Other renewable,B15
+Solar,B16
+Waste,B17
+Wind Offshore,B18
+Wind Onshore,B19
+Other,B20
+AC Link,B21
+DC Link,B22
+Substation,B23
+Transformer,B24
+Energy storage,B25

@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw data ingested from ENTSO-E and stored in the application database."
+    database: gridpulse
+    schema: public
+    tables:
+      - name: actual_generation
+      - name: actual_load
+      - name: day_ahead_prices
+      - name: load_forecast
+      - name: renewable_forecast
+      - name: physical_cross_border_flows
+      - name: scheduled_commercial_exchanges
