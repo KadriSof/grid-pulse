@@ -1,0 +1,12 @@
+gridpulse:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      dbname: gridpulse
+      schema: public
+      threads: 4
+      user: "{{ env_var('GRIDPULSE_PG_USER', 'gridpulse') }}"
+      password: "{{ env_var('GRIDPULSE_PG_PASSWORD', 'gridpulse') }}"
