@@ -50,3 +50,7 @@ Thumbs.db
 # Docker (if using docker-compose volumes)
 docker/data/
 docker/logs/
+
+# dbt
+dbt/target/
+dbt/logs/
