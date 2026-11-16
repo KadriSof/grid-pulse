@@ -1,29 +1,29 @@
-fuel_type_name,psr_code
-Mixed,A03
-Generation,A04
-Load,A05
-Biomass,B01
-Fossil Brown coal/Lignite,B02
-Fossil Coal-derived gas,B03
-Fossil Gas,B04
-Fossil Hard coal,B05
-Fossil Oil,B06
-Fossil Oil shale,B07
-Fossil Peat,B08
-Geothermal,B09
-Hydro Pumped Storage,B10
-Hydro Run-of-river and pondage,B11
-Hydro Water Reservoir,B12
-Marine,B13
-Nuclear,B14
-Other renewable,B15
-Solar,B16
-Waste,B17
-Wind Offshore,B18
-Wind Onshore,B19
-Other,B20
-AC Link,B21
-DC Link,B22
-Substation,B23
-Transformer,B24
-Energy storage,B25
+psr_code,fuel_type_name
+A03,Mixed
+A04,Generation
+A05,Load
+B01,Biomass
+B02,Fossil Brown coal/Lignite
+B03,Fossil Coal-derived gas
+B04,Fossil Gas
+B05,Fossil Hard coal
+B06,Fossil Oil
+B07,Fossil Oil shale
+B08,Fossil Peat
+B09,Geothermal
+B10,Hydro Pumped Storage
+B11,Hydro Run-of-river and pondage
+B12,Hydro Water Reservoir
+B13,Marine
+B14,Nuclear
+B15,Other renewable
+B16,Solar
+B17,Waste
+B18,Wind Offshore
+B19,Wind Onshore
+B20,Other
+B21,AC Link
+B22,DC Link
+B23,Substation
+B24,Transformer
+B25,Energy storage
