@@ -34,7 +34,9 @@ class PersistenceService:
 
         model = DATASET_MODEL_MAP.get(dataset_id)
         if not model:
-            raise ValueError(f"No database model mapped for dataset_id: {dataset_id}")
+            raise ValueError(
+                f"[PersistenceService] No database model mapped for dataset_id: {dataset_id}"
+            )
 
         table_name = model.__tablename__
 
@@ -44,6 +46,7 @@ class PersistenceService:
         # Custom Pandas to_sql method for Postgres UPSERT
         def upsert_method(table, conn, keys, data_iter):
             data = [dict(zip(keys, row)) for row in data_iter]
+
             stmt = insert(table.table).values(data)
 
             # Build the ON CONFLICT DO UPDATE clause
@@ -52,7 +55,6 @@ class PersistenceService:
                 for col in table.table.columns
                 if col.name not in primary_keys and col.name != "ingested_at"
             }
-            update_dict["ingested_at"] = pd.Timestamp.now(tz="UTC")
 
             upsert_stmt = stmt.on_conflict_do_update(
                 index_elements=primary_keys, set_=update_dict
@@ -60,6 +62,10 @@ class PersistenceService:
             conn.execute(upsert_stmt)
 
         try:
+            # Add ingested_at to the DataFrame before to_sql
+            df = df.copy()
+            df["ingested_at"] = pd.Timestamp.now(tz="UTC")
+
             # Ensure datetime columns are timezone-aware UTC before insertion
             for col in df.columns:
                 if "datetime" in col or "time" in col:
