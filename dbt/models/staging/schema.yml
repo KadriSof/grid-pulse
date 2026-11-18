@@ -1,0 +1,45 @@
+version: 2
+
+# SILVER STAGING MODELS (Cleaned & Dimensionalized)
+models:
+  - name: stg_entsoe_actual_generation
+    description: "Cleansed generation data with split fuel types and official PSR codes."
+    columns:
+      - name: country_code
+        description: "The ENTSO-E EIC code for the bidding zone."
+        tests:
+          - not_null
+      - name: datetime_utc
+        description: "The UTC timestamp of the measurement."
+        tests:
+          - not_null
+      - name: psr_code
+        description: "Official ENTSO-E Production System Resource code (e.g., B19 for Wind Onshore)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_psr_types')
+                field: psr_code
+
+  - name: stg_entsoe_actual_load
+    description: "Cleansed actual load data with bidding zone metadata."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: datetime_utc
+        tests: [not_null]
+      - name: load_mw
+        description: "Total load in Megawatts."
+        tests:
+          - not_null
+
+  - name: stg_entsoe_physical_cross_border_flows
+    description: "Cleansed cross-border flows with human-readable zone names."
+    columns:
+      - name: in_domain
+        tests: [not_null]
+      - name: out_domain
+        tests: [not_null]
+      - name: datetime_utc
+        tests: [not_null]

@@ -3,13 +3,19 @@ version: 2
 sources:
   - name: bronze
     description: "Raw data ingested from ENTSO-E and stored in the application database."
-    database: gridpulse
     schema: public
     tables:
       - name: actual_generation
+        description: "Actual generation by production type (PSR) per bidding zone."
       - name: actual_load
+        description: "Realised total electricity demand per bidding zone."
       - name: day_ahead_prices
+        description: "Day-ahead market clearing prices per bidding zone."
       - name: load_forecast
+        description: "Day-ahead total load forecast per bidding zone."
       - name: renewable_forecast
+        description: "Day-ahead wind and solar generation forecasts."
       - name: physical_cross_border_flows
+        description: "Actual physical electricity flows across borders."
       - name: scheduled_commercial_exchanges
+        description: "Commercially scheduled cross-border exchanges."
