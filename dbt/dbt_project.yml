@@ -18,7 +18,7 @@ models:
   gridpulse:
     staging:
       +materialized: view
-      +schema: staging # Creates a 'public_staging' schema
+      +schema: staging
     marts:
       +materialized: table
-      +schema: marts # Creates a 'public_marts' schema
+      +schema: marts
