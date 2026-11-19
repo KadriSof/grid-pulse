@@ -54,3 +54,4 @@ docker/logs/
 # dbt
 dbt/target/
 dbt/logs/
+dbt/dbt_packages/
