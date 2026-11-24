@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: mrt_supply_demand_balance
+    description: "Hourly generation vs load balance per bidding zone."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: hour_utc
+        tests: [not_null]
+      - name: net_balance_mw
+        description: "Generation minus load. Positive = surplus."
+
+  - name: mrt_generation_mix
+    description: "Daily generation mix per fuel type with share of total."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: date_utc
+        tests: [not_null]
+      - name: psr_code
+        tests: [not_null]
+      - name: pct_of_total_generation
+        description: "Fuel type's share of total generation (0-100)."
+
+  - name: mrt_renewable_penetration
+    description: "Hourly renewable generation as a percentage of load."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: hour_utc
+        tests: [not_null]
+
+  - name: mrt_cross_border_net_flows
+    description: "Daily net cross-border flow position per zone."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: date_utc
+        tests: [not_null]
