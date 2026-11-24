@@ -8,8 +8,11 @@ models:
         tests: [not_null]
       - name: hour_utc
         tests: [not_null]
-      - name: net_balance_mw
-        description: "Generation minus load. Positive = surplus."
+      - name: balance_status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["surplus", "deficit", "balanced"]
 
   - name: mrt_generation_mix
     description: "Daily generation mix per fuel type with share of total."
@@ -20,8 +23,6 @@ models:
         tests: [not_null]
       - name: psr_code
         tests: [not_null]
-      - name: pct_of_total_generation
-        description: "Fuel type's share of total generation (0-100)."
 
   - name: mrt_renewable_penetration
     description: "Hourly renewable generation as a percentage of load."
@@ -38,9 +39,14 @@ models:
         tests: [not_null]
       - name: date_utc
         tests: [not_null]
+      - name: net_position
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["net_exporter", "net_importer", "balanced"]
 
   - name: mrt_price_analytics
-    description: "Daily day-ahead price statistics (avg/min/max/spread/volatility) per bidding zone."
+    description: "Daily day-ahead price statistics per bidding zone."
     columns:
       - name: country_code
         tests: [not_null]

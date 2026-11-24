@@ -1,20 +1,34 @@
 version: 2
 
-# SILVER STAGING MODELS (Cleaned & Dimensionalized)
 models:
+  # ACTUAL GENERATION
   - name: stg_entsoe_actual_generation
     description: "Cleansed generation data with split fuel types and official PSR codes."
     columns:
       - name: country_code
-        description: "The ENTSO-E EIC code for the bidding zone."
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: country_code
+      - name: bidding_zone
+        tests:
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: area_short_code
       - name: datetime_utc
-        description: "The UTC timestamp of the measurement."
+        tests: [not_null]
+      - name: generation_mw
+        tests: [not_null]
+      - name: business_type
         tests:
           - not_null
+          - accepted_values:
+              arguments:
+                values: ["Actual Aggregated", "Actual Consumption"]
       - name: psr_code
-        description: "Official ENTSO-E Production System Resource code (e.g., B19 for Wind Onshore)."
         tests:
           - not_null
           - relationships:
@@ -22,20 +36,86 @@ models:
                 to: ref('entsoe_psr_types')
                 field: psr_code
 
+  # ACTUAL LOAD
   - name: stg_entsoe_actual_load
     description: "Cleansed actual load data with bidding zone metadata."
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: country_code
+      - name: datetime_utc
+        tests: [not_null]
+      - name: load_mw
+        tests: [not_null]
+
+  # DAY-AHEAD PRICES
+  - name: stg_entsoe_day_ahead_prices
+    description: "Cleansed day-ahead electricity prices per bidding zone."
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: country_code
+      - name: datetime_utc
+        tests: [not_null]
+      - name: price_eur_per_mwh
+        tests: [not_null]
+      - name: currency
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["EUR"]
+
+  # LOAD FORECAST
+  - name: stg_entsoe_load_forecast
+    description: "Cleansed day-ahead load forecast per bidding zone."
     columns:
       - name: country_code
         tests: [not_null]
       - name: datetime_utc
         tests: [not_null]
-      - name: load_mw
-        description: "Total load in Megawatts."
+
+  # RENEWABLE FORECAST
+  - name: stg_entsoe_renewable_forecast
+    description: "Cleansed wind and solar generation forecasts."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: datetime_utc
+        tests: [not_null]
+
+  # PHYSICAL CROSS-BORDER FLOWS
+  - name: stg_entsoe_physical_cross_border_flows
+    description: "Cleansed cross-border physical electricity flows."
+    columns:
+      - name: in_domain
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: country_code
+      - name: out_domain
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('entsoe_bidding_zones')
+                field: country_code
+      - name: datetime_utc
+        tests: [not_null]
 
-  - name: stg_entsoe_physical_cross_border_flows
-    description: "Cleansed cross-border flows with human-readable zone names."
+  # SCHEDULED COMMERCIAL EXCHANGES
+  - name: stg_entsoe_scheduled_commercial_exchanges
+    description: "Cleansed scheduled commercial cross-border exchanges."
     columns:
       - name: in_domain
         tests: [not_null]
