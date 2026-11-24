@@ -45,9 +45,9 @@ select
     country_code,
     bidding_zone_name,
     date_utc,
-    round(avg_export_mw, 2) as avg_export_mw,
-    round(avg_import_mw, 2) as avg_import_mw,
-    round(net_flow_mw, 2)   as net_flow_mw,
+    round(avg_export_mw::numeric, 2) as avg_export_mw,
+    round(avg_import_mw::numeric, 2) as avg_import_mw,
+    round(net_flow_mw::numeric, 2)   as net_flow_mw,
     case
         when net_flow_mw > 0 then 'net_exporter'
         when net_flow_mw < 0 then 'net_importer'
