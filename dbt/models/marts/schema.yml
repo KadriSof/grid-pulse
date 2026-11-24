@@ -38,3 +38,13 @@ models:
         tests: [not_null]
       - name: date_utc
         tests: [not_null]
+
+  - name: mrt_price_analytics
+    description: "Daily day-ahead price statistics (avg/min/max/spread/volatility) per bidding zone."
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: date_utc
+        tests: [not_null]
+      - name: avg_price_eur_mwh
+        tests: [not_null]
